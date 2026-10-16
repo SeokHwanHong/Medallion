@@ -157,7 +157,7 @@ flowchart TD
 
 | 테이블 구분 | 담당 테이블명 | 담당자 | 데이터 책임 범위 |
 | :--- | :--- | :---: | :--- |
-| **기존 핵심** | `patients`, `appointments`, `appointment_events` | **박준범** | 환자·예약 정제, 슬롯 연계, 의사배치 최적화 |
+| **기존 핵심** | `patients`, `appointments`, `appointment_events` | 팀원 1 | 환자·예약 정제, 슬롯 연계, 의사배치 최적화 |
 | **기존 원무** | `checkins` | 팀원 A | 접수·체크인 정제, 워크인/예약 분류, 이중접수 격리 |
 | **기존 임상** | `encounters`, `encounter_services`, `service_catalog` | 팀원 B | 진료 기록, 처치 내역, 수가 카탈로그 정합성 |
 | **기존 수납** | `payments` | 팀원 C | 원무 수납, 환불 트랜잭션, 진료비 대사 |
