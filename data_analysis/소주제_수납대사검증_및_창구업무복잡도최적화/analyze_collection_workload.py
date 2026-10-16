@@ -1,4 +1,4 @@
-"""[백선영] 목적: 수정 합성자료와 최종 캐시의 오프라인 주제 분석. 입력: 보존된 CSV/Parquet. 출력: SQL, 결과, Gold, 발표 차트. DB 접속 없음."""
+"""목적: 수정 합성자료와 최종 캐시의 오프라인 주제 분석. 입력: 보존된 CSV/Parquet. 출력: SQL, 결과, Gold, 발표 차트. DB 접속 없음."""
 from pathlib import Path
 import hashlib, json, sqlite3
 import pandas as pd
@@ -28,7 +28,7 @@ con.execute('CREATE INDEX local_payment_key ON final_payments(payment_id,encount
 # 인덱스는 로컬 SQLite 메모리 전용이다. MySQL에는 접속하지 않는다.
 queries = {}
 def add(key, question, grain, denominator, interpretation, connection, sql):
-    head = f'-- [백선영] 목적: {question}\n-- 입력: 로컬 캐시 및 수정 합성자료; 출력: {key} 결과\n-- 질문: {question}\n-- 한 행의 의미: {grain}\n-- 모집단·분모: {denominator}\n-- 결과 해석: {interpretation}\n-- 소주제와 연결: {connection}\n-- 실행: SQLite 로컬 메모리. MySQL 8 호환 SELECT 구문이나 현재 MySQL 실행 미검증.\n-- final_*는 로컬 캐시 별칭이며 실제 DB 테이블명이 아님. DB 생성·적재 지시가 아님.\n'
+    head = f'-- 목적: {question}\n-- 입력: 로컬 캐시 및 수정 합성자료; 출력: {key} 결과\n-- 질문: {question}\n-- 한 행의 의미: {grain}\n-- 모집단·분모: {denominator}\n-- 결과 해석: {interpretation}\n-- 소주제와 연결: {connection}\n-- 실행: SQLite 로컬 메모리. MySQL 8 호환 SELECT 구문이나 현재 MySQL 실행 미검증.\n-- final_*는 로컬 캐시 별칭이며 실제 DB 테이블명이 아님. DB 생성·적재 지시가 아님.\n'
     (ROOT/'sql'/f'{key}.sql').write_text(head+sql.strip()+';\n',encoding='utf-8')
     result=pd.read_sql_query(sql,con)
     result.to_csv(ROOT/'results'/f'{key}.csv',index=False,encoding='utf-8-sig')
@@ -110,14 +110,14 @@ def chart(name,fig,footnote):
     path=ROOT/'charts'/f'{name}.html'
     fig.write_html(path,include_plotlyjs=True)
     figures.append((name,path))
-chart('01_workload',px.bar(q2,x='scenario_id',y='task_minutes',color='task_type',barmode='stack',title='[백선영] 수납 확인 작업량: 기본 가정과 복잡화 가정',labels={'task_minutes':'합성 작업분(task-minutes)','scenario_id':'가정'}),'수정 합성자료 · 동일 결제 1,749건 · 실제 인력 소요시간 및 업무 증가의 관측값 아님')
-chart('02_evidence',px.bar(q3,x='reconciliation_result',y='payment_count',text='payment_count',title='[백선영] 수정본 생성 당시의 대사 근거 분류',labels={'payment_count':'결제 건수','reconciliation_result':'과거 로컬 입력 기준 판정'}),'BASE RECONCILE 1,749건 · 최종 DB의 현재 오류·미수금으로 해석 금지')
-chart('03_linkage',px.bar(q4,x='reconciliation_result',y='payments',color='linkage',title='[백선영] 과거 판정과 최종 캐시 연결 범위',labels={'payments':'결제 건수','reconciliation_result':'과거 판정'}),'payment_id + encounter_id 일치 · 미연결을 미납 또는 오류로 분류하지 않음')
-chart('04_booking',px.bar(q5,x='scenario_id',y='requests',color='decision',title='[백선영] 추가 예약 수요 가정: 제안가능·철회 요청',labels={'requests':'활성 요청 건수','scenario_id':'가정'}),'BASE 1,944건 / DEMAND_UP 3,888건 · WAITLIST 0건 · 예약 확정 또는 병목 검출 아님')
+chart('01_workload',px.bar(q2,x='scenario_id',y='task_minutes',color='task_type',barmode='stack',title='수납 확인 작업량: 기본 가정과 복잡화 가정',labels={'task_minutes':'합성 작업분(task-minutes)','scenario_id':'가정'}),'수정 합성자료 · 동일 결제 1,749건 · 실제 인력 소요시간 및 업무 증가의 관측값 아님')
+chart('02_evidence',px.bar(q3,x='reconciliation_result',y='payment_count',text='payment_count',title='수정본 생성 당시의 대사 근거 분류',labels={'payment_count':'결제 건수','reconciliation_result':'과거 로컬 입력 기준 판정'}),'BASE RECONCILE 1,749건 · 최종 DB의 현재 오류·미수금으로 해석 금지')
+chart('03_linkage',px.bar(q4,x='reconciliation_result',y='payments',color='linkage',title='과거 판정과 최종 캐시 연결 범위',labels={'payments':'결제 건수','reconciliation_result':'과거 판정'}),'payment_id + encounter_id 일치 · 미연결을 미납 또는 오류로 분류하지 않음')
+chart('04_booking',px.bar(q5,x='scenario_id',y='requests',color='decision',title='추가 예약 수요 가정: 제안가능·철회 요청',labels={'requests':'활성 요청 건수','scenario_id':'가정'}),'BASE 1,944건 / DEMAND_UP 3,888건 · WAITLIST 0건 · 예약 확정 또는 병목 검출 아님')
 top=q8.head(12).copy()
-chart('05_finance_volume',px.bar(top,x='hospital_id',y=['split_count','refund_count'],barmode='group',title='[백선영] 분할결제 건수 상위 12개 병원의 합산 확인 규모',labels={'value':'진료 건수','hospital_id':'병원','variable':'기록 유형'}),'최종 캐시 전체 완료 진료 기준 · 분할결제와 환불은 중복 가능 · 오류·성과 순위 아님')
+chart('05_finance_volume',px.bar(top,x='hospital_id',y=['split_count','refund_count'],barmode='group',title='분할결제 건수 상위 12개 병원의 합산 확인 규모',labels={'value':'진료 건수','hospital_id':'병원','variable':'기록 유형'}),'최종 캐시 전체 완료 진료 기준 · 분할결제와 환불은 중복 가능 · 오류·성과 순위 아님')
 
-report=f'''[백선영] 목적: 분석 가능한 주제·Silver·Gold·발표 제안. 입력: 수정 합성 CSV 및 최종 DB 로컬 캐시. 출력: 실행 결과와 발표용 차트.
+report=f'''목적: 분석 가능한 주제·Silver·Gold·발표 제안. 입력: 수정 합성 CSV 및 최종 DB 로컬 캐시. 출력: 실행 결과와 발표용 차트.
 
 추천 발표 제목
 「정상 대사 이후의 수납 업무 개선: 분할결제·환불 합산 확인과 업무 복잡도 시나리오」
@@ -179,7 +179,7 @@ TO-BE
 현재 MySQL 재실행, 수정본의 현재 DB 전체 부모키 검증, 실제 직원 업무시간 및 개선 효과, 업무량 가정의 외적 타당성. 외부 의료환경 통계는 이번 오프라인 추가 분석에서 새로 수집하거나 갱신하지 않음.
 '''
 (ROOT/'주제별_Gold_분석리포트.txt').write_text(report,encoding='utf-8-sig')
-(ROOT/'발표구성.txt').write_text('''[백선영] 목적: 발표 구성. 입력: 검증된 로컬 분석. 출력: 7장 발표 메시지와 차트 배치.
+(ROOT/'발표구성.txt').write_text('''목적: 발표 구성. 입력: 검증된 로컬 분석. 출력: 7장 발표 메시지와 차트 배치.
 1. 문제 정의: 정상 대사 이후에도 복수 거래의 합산 확인이 필요하다. 전체 진료 496,863건, 차이 0건을 함께 제시.
 2. 자료의 역할: 최종 캐시=기록 대사, 수정 합성자료=업무 가정 실험. 표본·기준시점을 분리. charts/03_linkage.png.
 3. 확인 규모: 분할결제 37.86%, 환불 9.56%. charts/05_finance_volume.png. 오류 순위로 말하지 않음.
@@ -189,8 +189,8 @@ TO-BE
 7. 한계와 확장: 대기 0건(차트04는 부록), 가용시간 0행. 지원 연계 및 감염병 전중후 분석은 향후 과제.
 발표 문장: “차이가 없다는 결과를 숨기지 않고, 정상 대사를 유지하면서 확인 절차의 복잡도를 관리하는 방향을 제안합니다.”
 ''',encoding='utf-8-sig')
-metadata={'author':'백선영','purpose':'오프라인 수정 합성자료 분석 검증','engine':sqlite3.sqlite_version,'mysql_connected':False,'source_dataset':manifest['dataset_id'],'checks':checks,'sql_result_rows':{k:len(v) for k,v in queries.items()},'linked_payments':linked,'unlinked_payments':1749-linked}
+metadata={'author':'Team 3','purpose':'오프라인 수정 합성자료 분석 검증','engine':sqlite3.sqlite_version,'mysql_connected':False,'source_dataset':manifest['dataset_id'],'checks':checks,'sql_result_rows':{k:len(v) for k,v in queries.items()},'linked_payments':linked,'unlinked_payments':1749-linked}
 (ROOT/'검증결과.json').write_text(json.dumps(metadata,ensure_ascii=False,indent=2),encoding='utf-8')
-(ROOT/'requirements.txt').write_text('# [백선영] 목적: 오프라인 분석 실행 의존성; 입력: Python 환경; 출력: 분석/차트\npandas>=3.0\npyarrow>=26\nplotly>=7\nplaywright>=1.64\n',encoding='utf-8')
-(ROOT/'실행안내.txt').write_text('[백선영] 목적: 분석 재실행. 입력: 기존 로컬 CSV/Parquet. 출력: 결과·차트. DB 불필요.\n프로젝트 루트에서:\n.\\.venv\\Scripts\\python.exe baek\\offline_topic_analysis_20261015\\build_analysis.py\n.\\.venv\\Scripts\\python.exe baek\\offline_topic_analysis_20261015\\render_charts.py\nSQL의 final_*는 실제 MySQL 테이블이 아닌 로컬 캐시 별칭. SQL 결과 CSV는 표준 헤더를 보존하며 작성자·목적은 이 안내와 SQL 주석에 기록.\n',encoding='utf-8-sig')
+(ROOT/'requirements.txt').write_text('# 목적: 오프라인 분석 실행 의존성; 입력: Python 환경; 출력: 분석/차트\npandas>=3.0\npyarrow>=26\nplotly>=7\nplaywright>=1.64\n',encoding='utf-8')
+(ROOT/'실행안내.txt').write_text('목적: 분석 재실행. 입력: 기존 로컬 CSV/Parquet. 출력: 결과·차트. DB 불필요.\n프로젝트 루트에서:\n.\\.venv\\Scripts\\python.exe baek\\offline_topic_analysis_20261015\\build_analysis.py\n.\\.venv\\Scripts\\python.exe baek\\offline_topic_analysis_20261015\\render_charts.py\nSQL의 final_*는 실제 MySQL 테이블이 아닌 로컬 캐시 별칭. SQL 결과 CSV는 표준 헤더를 보존하며 작성자·목적은 이 안내와 SQL 주석에 기록.\n',encoding='utf-8-sig')
 print(json.dumps(metadata,ensure_ascii=False,indent=2))

@@ -1,5 +1,5 @@
 -- =========================================================
--- [백선영] 02_build_silver.sql
+-- 02_build_silver.sql
 -- 병원 결제·환불 분석을 위한 기초 집계 VIEW
 --
 -- 대상: MySQL 8.4 / team3_medallion, team3_medallion_dq

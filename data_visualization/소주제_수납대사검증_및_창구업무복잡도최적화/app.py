@@ -1,4 +1,4 @@
-"""[백선영] 목적: 병원 수납 기록 점검·가정 비교. 입력: 최종 MySQL 로컬 Parquet/공식통계 JSON. 출력: 동적 화면·다운로드."""
+"""목적: 병원 수납 기록 점검·가정 비교. 입력: 최종 MySQL 로컬 Parquet/공식통계 JSON. 출력: 동적 화면·다운로드."""
 from pathlib import Path
 import json
 import pandas as pd
@@ -11,7 +11,7 @@ from export_utils import csv_bytes
 
 
 # ===== 시나리오 계산: 이 파일에 포함 =====
-"""[백선영] 실제 캐시 거래와 분리한 결제·환불 시점 가정 비교.
+"""실제 캐시 거래와 분리한 결제·환불 시점 가정 비교.
 
 금액·거래 종류·PK·원결제 연결을 보존하고 메모리의 거래 시각만 변경한다.
 최종 청구 변경 이력이 없으므로 과거 net_charge 대사/미수금은 계산하지 않는다.
@@ -153,7 +153,7 @@ if hospitals:fm &= f.hospital_id.isin(hospitals);pm &= p.hospital_id.isin(hospit
 if departments:fm &= f.department_name.isin(departments);pm &= p.department_name.isin(departments)
 sf=f.loc[fm];sp=p.loc[pm]
 st.title('진료 후 결제·환불 패턴 분석')
-st.caption(f"합성데이터 분석 · [백선영] · 최종 MySQL team3_medallion · 스냅샷 {summary['snapshot']['snapshot_time']} (서버 표시)")
+st.caption(f"합성데이터 분석 · · 최종 MySQL team3_medallion · 스냅샷 {summary['snapshot']['snapshot_time']} (서버 표시)")
 st.write(f"현재 선택: **{start.date()}~{end.date()} · 병원 {', '.join(hospitals) if hospitals else '전체'} · 진료과 {', '.join(departments) if departments else '전체'} · 기준 데이터: 최종 스냅샷**")
 st.caption('진료 지표의 기간은 진료 시작일, 거래 지표의 기간은 거래일입니다. 진료 대사는 해당 진료의 최종 스냅샷까지 모든 연결 거래를 합산합니다. 선택 기간 안의 거래만으로 진료 차액을 만들지 않습니다.')
 a,b,c,d=st.columns(4)
