@@ -1,0 +1,110 @@
++-------------------------------------------------------------+
+| section                                                     |
++-------------------------------------------------------------+
+| ## F01 재정제 격리: 테이블 x 원천 x 직접/연쇄               |
++-------------------------------------------------------------+
++----------------------+----------+-----------------+--------+
+| table_name           | src      | quarantine_kind | n      |
++----------------------+----------+-----------------+--------+
+| appointment_events   | LEGACY_A | cascade         | 249617 |
+| appointment_events   | LEGACY_A | direct          |  32499 |
+| appointment_events   | LEGACY_B | cascade         | 229576 |
+| appointment_events   | LEGACY_B | direct          |  32503 |
+| appointment_slots    | LEGACY_A | cascade         |  38203 |
+| appointment_slots    | LEGACY_B | cascade         |  24172 |
+| appointments         | LEGACY_A | cascade         | 115839 |
+| appointments         | LEGACY_A | direct          |  14555 |
+| appointments         | LEGACY_B | cascade         | 105381 |
+| appointments         | LEGACY_B | direct          |  14543 |
+| checkins             | LEGACY_A | cascade         |  56138 |
+| checkins             | LEGACY_A | direct          |  16237 |
+| checkins             | LEGACY_B | cascade         |  42857 |
+| checkins             | LEGACY_B | direct          |  16307 |
+| clinic_sessions      | LEGACY_A | cascade         |   9966 |
+| clinic_sessions      | LEGACY_B | cascade         |   6319 |
+| doctor_assignments   | LEGACY_A | cascade         |    505 |
+| doctor_assignments   | LEGACY_B | cascade         |    385 |
+| encounter_services   | LEGACY_A | cascade         | 437001 |
+| encounter_services   | LEGACY_A | direct          |  25473 |
+| encounter_services   | LEGACY_B | cascade         | 437946 |
+| encounter_services   | LEGACY_B | direct          |  26751 |
+| encounters           | LEGACY_A | cascade         | 103695 |
+| encounters           | LEGACY_A | dependency      |  23720 |
+| encounters           | LEGACY_B | cascade         |  98779 |
+| encounters           | LEGACY_B | dependency      |  17571 |
+| hospital_departments | LEGACY_A | cascade         |      8 |
+| hospital_departments | LEGACY_A | direct          |     20 |
+| hospital_departments | LEGACY_B | cascade         |     12 |
+| hospital_departments | LEGACY_B | direct          |     19 |
+| hospitals            | LEGACY_A | direct          |      2 |
+| hospitals            | LEGACY_B | direct          |      3 |
+| patients             | LEGACY_A | direct          |   1499 |
+| patients             | LEGACY_B | direct          |   1498 |
+| payments             | LEGACY_A | cascade         | 350613 |
+| payments             | LEGACY_A | direct          |   3999 |
+| payments             | LEGACY_B | cascade         | 320919 |
+| payments             | LEGACY_B | direct          |   3999 |
++----------------------+----------+-----------------+--------+
++-----------------------------------------------------+
+| section                                             |
++-----------------------------------------------------+
+| ## F02 재정제 제외(중복): 테이블 x 원천             |
++-----------------------------------------------------+
++--------------------+----------+------+
+| table_name         | src      | n    |
++--------------------+----------+------+
+| encounter_services | LEGACY_A | 3364 |
+| encounter_services | LEGACY_B | 3706 |
+| encounters         | LEGACY_A |  621 |
+| encounters         | LEGACY_B |  690 |
++--------------------+----------+------+
++--------------------------------------+
+| section                              |
++--------------------------------------+
+| ## F03 기준정보 테이블 원천          |
++--------------------------------------+
++----------------------+----------+-----+
+| t                    | src      | n   |
++----------------------+----------+-----+
+| service_catalog      | LEGACY_A | 180 |
+| departments          | LEGACY_A |  12 |
+| code_dictionary      | LEGACY_A |  36 |
+| legacy_code_mappings | LEGACY_A |  36 |
+| legacy_code_mappings | LEGACY_B |  36 |
++----------------------+----------+-----+
++------------------------------------------------------+
+| section                                              |
++------------------------------------------------------+
+| ## F04 원천 코드 매핑: A와 B가 같은 매핑             |
++------------------------------------------------------+
++--------+-----------+
+| a_rows | same_in_b |
++--------+-----------+
+|     36 |        36 |
++--------+-----------+
++------------------------------------------------------------+
+| section                                                    |
++------------------------------------------------------------+
+| ## F05 예약 이벤트 시각 (예약 시각 기준, 분)               |
++------------------------------------------------------------+
++----------+------------+--------+---------+---------+------------+
+| src      | event_type | n      | min_min | max_min | before_pct |
++----------+------------+--------+---------+---------+------------+
+| LEGACY_A | CANCELLED  |  67971 |    -120 |    -120 |      100.0 |
+| LEGACY_A | COMPLETED  | 269456 |     180 |     180 |        0.0 |
+| LEGACY_B | COMPLETED  | 277896 |     180 |     180 |        0.0 |
+| LEGACY_B | NO_SHOW    |  69528 |     180 |     180 |        0.0 |
++----------+------------+--------+---------+---------+------------+
++-----------------------------------------+
+| section                                 |
++-----------------------------------------+
+| ## F06 예약 최종 상태 (원천별)          |
++-----------------------------------------+
++----------+-----------+--------+-------+
+| src      | status    | n      | pct   |
++----------+-----------+--------+-------+
+| LEGACY_A | CANCELLED |  70889 | 20.13 |
+| LEGACY_A | COMPLETED | 281219 | 79.87 |
+| LEGACY_B | COMPLETED | 289990 | 79.98 |
+| LEGACY_B | NO_SHOW   |  72584 | 20.02 |
++----------+-----------+--------+-------+
