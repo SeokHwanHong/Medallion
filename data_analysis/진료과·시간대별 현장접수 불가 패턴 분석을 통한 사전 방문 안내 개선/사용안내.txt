@@ -1,0 +1,111 @@
+진료과·시간대별 현장접수 불가 패턴 분석을 통한 사전 방문 안내 개선
+작성일: 2026-10-16
+
+1. 목적과 자료
+현장접수 불가(REJECTED)가 반복되는 진료과·요일·시간대와 관련 환자군을 파악한다.
+실제 분석은 team3_medallion 정제 테이블 대상이다. 원본 CSV/input.zip은 구조 확인용이며 통계를 혼용하지 않는다.
+checkins(checkin_id, patient_id, session_id, arrival_at, visit_type, outcome)
+clinic_sessions(session_id, hospital_department_id)
+hospital_departments(hospital_department_id, hospital_id, department_code)
+departments(department_code, department_name)
+hospitals(hospital_id), patients(patient_id, birth_date, sex_code)
+병원명·유형 컬럼의 존재는 확인했으나 기본 집계에 필요하지 않아 조회하지 않는다.
+병원·환자 테이블은 01~03에서도 부모 연결 진단을 위해 연결하며 미연결 기록을 제외하지 않는다.
+encounters·서비스·수납 테이블은 사용하지 않는다. SEEN의 진료 헤더 누락을 REJECTED로 바꾸지 않는다.
+
+2. 실행
+- 각 SQL은 WITH부터 마지막 세미콜론까지 독립 실행하는 조회문 한 개다.
+- DB 객체·데이터 변경, 서버 파일 쓰기, 인덱스 변경, 선행 실행은 없다.
+- 기간은 2023-01-01 이상 ~ 2026-01-01 미만의 전체 36개월, 월별 집계다.
+- analysis_params의 기간은 네 파일에서 동일하게 설정한다. 날짜 기준은 arrival_at이다.
+- 현재 DB 스냅샷의 과거 기록이며 과거 특정 시점 상태 복원이나 미래 예측이 아니다.
+- 도착시각 누락/기간 밖/비현장접수 기록은 분석 모집단이 아니다. 파일에 없는 월·구간을 0으로 단정하지 않는다.
+- DB 접속·실행·권한·실행 계획·성능은 검증하지 않았다. 조회도 서버 자원을 사용한다.
+
+3. 공통 분모와 결과
+- 모집단: 정제 checkins에서 visit_type='WALK_IN'이고 기간 내 도착한 모든 접수 기록.
+- 분석 단위: 접수 기록 1건. 고유 환자 수/확정 방문 수와 다르다.
+- SEEN=진료완료 상태, LEFT=이탈 상태, REJECTED=접수불가 상태, 나머지/NULL=UNKNOWN.
+- walk_in_count = seen_count + left_count + rejected_count + unknown_outcome_count.
+- 각 결과 비율 = 각 결과 건수 / walk_in_count × 100. UNKNOWN도 분모에 포함한다.
+- 접수불가율(rejected_pct) = REJECTED / 해당 집단 전체 현장접수 × 100.
+- 접수불가 구성비는 REJECTED끼리 비교한다. 현장접수율과 구분한다.
+- 현장접수가 있으나 REJECTED가 0이면 접수불가율=0%다.
+- 구성비의 기준집단 REJECTED가 0이면 구성비=NULL이다. 0%로 바꾸지 않는다.
+- LEFT와 REJECTED를 합쳐 자발적 이탈이라 부르지 않는다.
+
+4. 파일별 분석
+01_walk_in_monthly_overview.sql
+  월별 전체 규모·결과 분포와 원본/조인 건수를 보여준다. 모든 부모 미연결을 포함한다.
+02_department_rejection.sql
+  월×진료과 집계. month_*는 UNKNOWN 진료과 포함 해당 월 전체 기준이며 자기 집단도 포함한다.
+  rejected_share_of_month_pct = 해당 진료과 REJECTED / 월 전체 REJECTED.
+  rejected_diff_vs_month_pp = 해당 진료과 접수불가율 - 월 전체 접수불가율.
+03_department_time_rejection.sql
+  월×진료과×요일×도착 시간대 집계.
+  weekday_monday_zero: 월=0, 화=1, 수=2, 목=3, 금=4, 토=5, 일=6.
+  arrival_hour: 9이면 09:00~09:59. 시간대를 임의로 합치거나 미관측 구간을 생성하지 않는다.
+  department_month_*는 같은 월·진료과 전체 요일·시간대 기준이며 해당 구간 자신도 포함한다.
+  rejected_share_of_department_month_pct = 구간 REJECTED / 해당 월·진료과 전체 REJECTED.
+  rejected_diff_vs_department_month_pp = 구간 접수불가율 - 해당 월·진료과 접수불가율.
+04_patient_group_rejection.sql
+  월×진료과×연령대×성별 집계. 환자 정보가 없어도 접수를 유지한다.
+  연령은 도착일 기준 만 나이: 0-19, 20-39, 40-59, 60-79, 80+, UNKNOWN.
+  생년월일 누락/zero date/미래 날짜/0~120세 밖은 UNKNOWN.
+  성별 F/M/U는 표준값, 누락/비표준은 UNKNOWN. U는 미상이며 별도 성별로 해석하지 않는다.
+  rejected_share_of_department_month_pct = 환자군 REJECTED / 해당 월·진료과 전체 REJECTED.
+  환자군을 설명하기 위한 결과이지 연령·성별에 따른 접수 제한 근거가 아니다.
+  시간대까지 세분화된 환자군 결과는 아니다. 03과 04를 교차 결합해 개인 수준 특성을 추정하지 않는다.
+
+5. 연결 품질와 키
+- department_unknown=1은 진료과 표준 코드 연결 미확인이다. 코드·명칭은 UNKNOWN 구간으로 유지한다.
+- missing_session_count, missing_hospital_department_count, missing_hospital_count,
+  missing_department_count, missing_patient_count는 각 부모 연결 확인 실패 건수다.
+- 상위 연결 누락은 하위 누락에도 포함될 수 있다. 누락 사유 건수는 서로 배타적이지 않으므로 더하지 않는다.
+- 부모 키가 유일하다는 전제다. 동일 키를 임의로 선택하거나 DISTINCT로 문제를 감추지 않는다.
+- source_walk_in_rows/source_unique_checkin_ids: 부모 조인 이전 월별 행/고유 접수 ID 수.
+- joined_walk_in_rows/joined_unique_checkin_ids: 부모 조인 이후 월별 행/고유 ID 수.
+- join_extra_rows: 조인 후 행 수 - 조인 전 행 수.
+- source_duplicate_or_null_id_rows는 원본 행 수-월별 고유 접수 ID 수로, 중복 초과분과 NULL ID 영향을 포함한다.
+- source_missing_checkin_id_rows는 NULL/빈 ID 건수다. source_key_issue는 키 중복/누락 신호다.
+- join_amplification_issue는 조인 전후 행 수 차이, key_or_join_issue는 둘 중 하나 이상일 때 1이다.
+- 진단은 월별 범위다. 서로 다른 월에 걸친 동일 ID 재사용 등 전역 유일성까지 검증한 것은 아니다.
+- key_or_join_issue=1이면 수치를 확정하지 말고 키와 조인을 조사한다.
+- 그룹별 unique_checkin_count만으로 그룹을 가로지르는 중복을 잡을 수 없어 월별 진단과 함께 본다.
+
+6. 재집계와 표시
+- 월별/그룹별 비율의 평균을 내지 않는다. 분자·분모 건수를 합쳐 다시 계산한다.
+- 예: 진료과의 36개월 접수불가율 = SUM(rejected_count) / SUM(walk_in_count) × 100.
+- 월별 진단값과 month_*/department_month_* 비교집단 합계는 여러 행에서 반복된다. SUM 금지.
+- 구성비는 사후 필터를 해도 분모가 바뀌지 않는다. 새 범위 구성비는 건수로 재계산한다.
+- small_sample=1은 현장접수 30건 미만. 삭제하지 말고 상세 순위 해석을 제한한다.
+- 30건 이상이 통계적 신뢰성을 보장하는 것은 아니다. 월·진료과 등으로 집계를 넓힐 수 있다.
+- 고유 환자 수를 월/그룹 간 합산하지 않는다. 이 SQL은 고유 환자 수를 별도로 추출하지 않는다.
+
+7. 내보내기
+사용자의 Workbench 26.7.0에서 Export Result Set이 비활성화된 상황을 확인했다.
+기존 8.0 GUI 방식으로 저장 가능하다고 보장하지 않는다. 사용 중인 mysql.exe 명령줄 방식으로 추출 가능하다.
+기본 --batch 출력은 TSV이므로 .csv 확장자만 붙이지 말고 실제 CSV로 변환한다.
+별도 Python 내보내기 코드/패키지는 제공하지 않는다. 비밀번호는 --password 숨김 입력을 사용한다.
+오류 없이 완료된 결과인지, 헤더가 있는지, 행 제한이나 빈 파일이 없는지 확인한다.
+
+8. 분석 해석 범위
+접수불가의 반복 구간과 관련 환자군은 확인할 수 있다.
+원인(안내 부족·의사 부족·정원 초과 등)이나 실제 헛걸음 여부는 확인할 수 없다.
+과거 집계만으로 실시간 접수 가능 여부를 제공할 수 없다.
+방문 전 안내의 우선 검토 구간과 접수불가 사유 기록의 개선을 제안할 수 있으나 효과는 입증하지 않았다.
+병원 수·운영일·인력으로 보정한 효율/혼잡도 지표나 인과관계로 표현하지 않는다.
+합성 데이터의 생성 규칙 영향이 있을 수 있으며 차이가 작으면 그대로 보고한다.
+
+9. 실행 후 대조
+- 네 SQL 모두 같은 데이터 스냅샷·기간으로 실행한다.
+- 각 행의 네 결과 건수 합계=walk_in_count.
+- 01 월별 walk_in_count와 02/03/04 각각의 월별 walk_in_count 합계 일치.
+- REJECTED 건수도 동일하게 대조. UNKNOWN과 부모 미연결이 사라지지 않는지 확인.
+- 02 월별 구성비 합계=100%, 03/04 월·진료과별 구성비 합계=100%(반올림 오차 허용).
+  기준 REJECTED가 없으면 그 범위의 구성비는 모두 NULL.
+- 월별 source/joined 진단은 한 번만 읽어 비교하고 중복 합산하지 않는다.
+- 실제 MySQL의 컬럼 타입·정제 버전·PK 유일성·권한·실행 계획은 별도 확인 대상이다.
+
+작성 중 검증은 DB 접속 없는 정적 검사와 가상 데이터의 로컬 메모리 SQL 검증이다.
+실제 MySQL 실행 검증이나 분석 결과를 대신하지 않는다.
