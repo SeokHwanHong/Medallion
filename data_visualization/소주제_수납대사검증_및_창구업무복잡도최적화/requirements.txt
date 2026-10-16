@@ -1,0 +1,5 @@
+# [백선영] 목적: 오프라인 분석 실행 의존성; 입력: Python 환경; 출력: 분석/차트
+pandas>=3.0
+pyarrow>=26
+plotly>=7
+playwright>=1.64
