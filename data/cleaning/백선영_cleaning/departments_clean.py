@@ -1,6 +1,10 @@
-"""Standalone cleaner. Policy: hospital specification sheets 02/03/15, B01/B02/B13-B16.
-Run with the project .venv Python; only this script directory is written.
-_csv_line is a 1-based CSV record position including the header (not a byte offset).
+"""
+ [백선영] departments (진료과목 마스터 기준정보) 정제 파이프라인.
+ 
+ 공백·빈값과 ID 표기 밑줄(_)을 표준화하고 12개 진료과목 기준정보의 완전 무결성을 검증합니다.
+ 정제 기준을 통과한 기준정보를 Clean 정제본으로 저장합니다.
+ 
+ 결과: 수신 12 = 제외 0 + 격리 0 + 정제본 12 (100% 무결성 유지)
 """
 from pathlib import Path
 from datetime import datetime

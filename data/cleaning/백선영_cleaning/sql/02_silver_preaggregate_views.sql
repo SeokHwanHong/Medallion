@@ -1,16 +1,19 @@
 -- ==============================================================================
--- [Silver Layer] 도메인별 그레인 단위 사전 집계 뷰 (Pre-aggregation Views)
--- 프로젝트: 외래 EMR 병원 데이터 AI-Ready 정제 및 수납 정합성 검증
--- 작성 레이어: Silver (도메인 집계 및 정제 뷰)
--- 아키텍처 원칙: 그레인 단위 사전 집계(Pre-aggregation at Grain Level)
--- 핵심 효과: encounters와 다대다 조인 시 발생하는 카테시안 곱(Fan-out) 및 금액 팽창 억제
--- 대상 DB 스키마: team3_medallion (Clean 정제 데이터셋)
+-- [백선영] 수납·재정 대사 및 원무 창구 최적화 파트
+--
+-- 작업 목적: Silver 레이어 도메인별 그레인 단위 사전 집계 뷰 구축 SQL
+-- 대상 테이블: payments, encounter_services
+-- 대상 스키마: team3_medallion (Clean DB)
+-- 주요 작업 내용:
+--   1. 진료(encounter_id) 그레인 단위 사전 집계로 카테시안 곱(Fan-out) 원천 차단
+--   2. 진료별 결제액/환불액 선집계 뷰(baek_silver_payment_totals) 생성
+--   3. 환불-원결제 Self-Join 연결 검증 뷰(baek_silver_refund_links) 생성
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
 -- 1. [Silver 뷰 1] 진료별 결제·환불 집계 뷰 (baek_silver_payment_totals)
 -- 설명: encounters 1건당 N건의 payments(결제, 환불)가 얽혀 있으므로,
---       진료(encounter_id) 그레인으로 사전 합산하여 1행으로 압축합니다.
+--       진료(encounter_id) 그레인으로 사전 합산하여 1행으로 압축
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW team3_medallion.baek_silver_payment_totals AS
 SELECT
@@ -51,7 +54,7 @@ SELECT
         ), 0
     ) AS refunded_amount,
 
-    -- 복합 결제 수단 검증 (단일 수단 여부 및 혼합 수단 플래그)
+    -- 복합 결제 수단 검증 (단일 수단 여부 및 혼합 수단 플래그(Flag-SINGLE_CARD, MIXED...))
     COUNT(DISTINCT payment_method) AS method_count,
     MIN(payment_method) AS single_method_candidate,
 
@@ -73,7 +76,7 @@ SELECT
     MIN(payment_date) AS first_transaction_at,
     MAX(payment_date) AS last_transaction_at,
 
-    -- 거래 유형 코드 유효성 검증
+    -- 거래 유형 코드 유효성 검증(결제/환불 이외 유형 제거)
     SUM(
         CASE
             WHEN CAST(transaction_type AS BINARY) NOT IN ('PAYMENT', 'REFUND')
@@ -117,7 +120,7 @@ GROUP BY encounter_id;
 
 
 -- ------------------------------------------------------------------------------
--- 3. [Silver 뷰 3] 원결제-환불 1:1 대사 링크 뷰 (baek_silver_refund_links)
+-- 3. [Silver 뷰 3] 원결제-환불 1:1 연결 대사 뷰 (baek_silver_refund_links)
 -- 설명: REFUND 거래의 original_payment_id가 유효한 선행 PAYMENT를 가리키는지 추적
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW team3_medallion.baek_silver_refund_links AS
@@ -132,7 +135,7 @@ SELECT
     p.payment_date AS original_payment_date,
     p.payment_method AS original_payment_method,
 
-    -- 링크 정합성 상태 분류
+    -- 링크 정합성 상태 분류(진짜 정상 환불인지 여부)
     CASE
         WHEN r.original_payment_id IS NULL THEN 'MISSING_ORIGINAL_LINK'
         WHEN p.payment_id IS NULL THEN 'BROKEN_ORIGINAL_LINK'

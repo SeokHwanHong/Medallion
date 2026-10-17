@@ -1,6 +1,12 @@
-"""Standalone cleaner. Policy: hospital specification sheets 02/03/15, B01/B02/B13-B16.
-Run with the project .venv Python; only this script directory is written.
-_csv_line is a 1-based CSV record position including the header (not a byte offset).
+"""
+ [백선영] payments (수납·결제 트랜잭션) 정제 파이프라인.
+ 
+ 공백·빈값, ID 밑줄(_)과 날짜 하이픈(-) 표기를 표준화하고 완전 중복 행을 제거합니다.
+ 미상값(UNREGISTERED)은 임의 변환하지 않고 원문 그대로 격리(Zero-Drop) 보존,
+ 음수 결제액, 날짜 오류, 더미 센티널 키(ENC_999999999) 및 원결제 참조 결함을 격리합니다.
+ 검증을 통과한 1차 정제본과 격리본, 제외본을 분리하여 저장합니다.
+ 
+ 결과: 수신 1,507,501 = 제외 7,501 + 격리 88,006 + 1차 정제본 1,411,994 (미상값 22,503건 원문 격리 보존)
 """
 from pathlib import Path
 from datetime import datetime
