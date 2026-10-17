@@ -99,7 +99,7 @@ GROUP BY encounter_id;
 -- ------------------------------------------------------------------------------
 -- 2. [Silver 뷰 2] 진료별 처방 서비스 집계 뷰 (baek_silver_service_totals)
 -- 설명: encounters 1건당 M건의 처방 서비스(encounter_services)가 발생하므로,
---       진료(encounter_id) 그레인으로 처방액과 건수를 사전 합산합니다.
+--       진료(encounter_id) 그레인으로 처방액과 건수를 사전 합산
 -- ------------------------------------------------------------------------------
 CREATE OR REPLACE VIEW team3_medallion.baek_silver_service_totals AS
 SELECT
